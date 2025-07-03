@@ -1,0 +1,74 @@
+# Node modules
+/node_modules
+/.pnp
+.pnp.js
+
+# Build output
+/dist
+/build
+/coverage
+/.turbo
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.*.local
+.env.local
+.env.test
+.env.development
+.env.production
+
+# Prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+/prisma/*.sqlite
+/prisma/migrations/
+prisma/.env
+
+# VSCode
+.vscode/
+.history/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+/docs
+*.doc.json
+
+# Test output
+/test-results
+/coverage
+/.nyc_output
+
+# Docker
+docker-compose.override.yml
+*.pid
+
+# Misc
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Optional: Ignore IDE folders
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Optional: Ignore test snapshots
+__snapshots__/
+*.snap
+
+# Optional: Ignore local database files
+*.db
+*.db-journal
