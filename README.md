@@ -121,7 +121,10 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=back_invitation
 POSTGRES_PORT=6543
-DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}"
+# Connect to Supabase via connection pooling
+DATABASE_URL="postgresql://postgres:postgres@localhost:6543/back_invitation?pgbouncer=true"
+# Direct connection to the database. Used for migrations
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/back_invitation"
 ```
 
 ## Using Docker for PostgreSQL
