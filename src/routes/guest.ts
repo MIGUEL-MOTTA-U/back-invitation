@@ -64,5 +64,4 @@ export default async function userRoutes(app: FastifyInstance) {
 		await guestRepository.deleteGuest(id);
 		return sendResponse({ message: `The user with Id ${id} was deleted.`, status: 200, type: typeApi}, res);
 	})
-
 }

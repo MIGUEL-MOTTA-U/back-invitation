@@ -15,6 +15,52 @@ Backend for wedding invitation page
 - `npm run format`: Formats the code with Biome.
 - `npm run docs`: Generates documentation with Typedoc.
 
+## API Endpoints
+
+All API endpoints are prefixed with `/api/v1`.
+
+### Guest Management
+
+#### Create a new guest
+- **POST** `/api/v1/guests`
+- **Body:**
+  ```json
+  {
+    "name": "string (required, min 1 character)",
+    "email": "string (required, valid email)",
+    "phone": "string (required, min 10 characters)",
+    "message": "string (optional)",
+    "confirmed": "boolean (optional, default: false)"
+  }
+  ```
+
+#### Get all guests (with pagination and search)
+- **GET** `/api/v1/guests`
+- **Query Parameters:**
+  - `page`: number (optional, default: 1)
+  - `size`: number (optional, default: 10)
+  - `name`: string (optional, search by name)
+  - `email`: string (optional, search by email)
+
+#### Get guest by ID
+- **GET** `/api/v1/guests/:id`
+
+#### Update guest
+- **PUT** `/api/v1/guests/:id`
+- **Body:** (all fields optional)
+  ```json
+  {
+    "name": "string (optional)",
+    "email": "string (optional, valid email)",
+    "phone": "string (optional, min 10 characters)",
+    "message": "string (optional)",
+    "confirmed": "boolean (optional)"
+  }
+  ```
+
+#### Delete guest
+- **DELETE** `/api/v1/guests/:id`
+
 ## Project structure
 
 ```
@@ -24,21 +70,35 @@ back-invitation/
 │   └── schema.prisma         # Database schema and migrations
 │
 ├── src/
-│   ├── errors/               # Custom error classes (empty for now)
+│   ├── errors/               # Custom error classes
+│   │   ├── ErrorRepository.ts
+│   │   ├── ErrorTemplate.ts
+│   │   └── index.ts
 │   ├── plugins/              # Plugins and configuration
-│   │   ├── awilix.ts         # Dependency injection container
-│   │   ├── dotenv.ts         # Environment variables config (exports 'env')
-│   │   ├── index.ts          # Exports plugins (container, prisma, env)
+│   │   ├── diContainer.ts    # Dependency injection container
+│   │   ├── dotenv.ts         # Environment variables config
+│   │   ├── handlerError.ts   # Error handling
+│   │   ├── index.ts          # Exports plugins
 │   │   ├── prisma.ts         # Prisma client instance
+│   │   ├── routes.ts         # Route registration with prefix
 │   │   └── zod.ts            # Zod instance for validation
-│   ├── repositories/         # Data access layer (empty for now)
+│   ├── repositories/         # Data access layer
+│   │   ├── classes/
+│   │   │   └── GuestRepositoryPostgres.ts
+│   │   ├── interfaces/
+│   │   │   └── GuestRepository.ts
+│   │   └── index.ts
 │   ├── routes/               # API routes
 │   │   ├── index.ts          # Exports all routes
-│   │   └── user.ts           # User-related routes
+│   │   └── guest.ts          # Guest-related routes
 │   ├── services/             # Business logic
-│   │   ├── classes/          # Service classes (empty for now)
-│   │   └── interfaces/       # Service interfaces (empty for now)
-│   ├── types/                # Custom TypeScript types (empty for now)
+│   │   ├── classes/          # Service classes
+│   │   └── interfaces/       # Service interfaces
+│   ├── types/                # Custom TypeScript types
+│   │   ├── Error.ts
+│   │   ├── GuestDTO.ts
+│   │   ├── OutputMessage.ts
+│   │   └── index.ts
 │   └── server.ts             # Main Fastify server setup and entry point
 │
 ├── tests/

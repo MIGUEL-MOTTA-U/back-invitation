@@ -1,7 +1,9 @@
 import cors from "@fastify/cors";
 import fastify from "fastify";
-import { diContainer, env, handleError, z } from "./plugins";
-import { routes } from "./routes";
+import { diContainer, env, handleError, z, allRoutes } from "./plugins";
+import swagger from "@fastify/swagger"
+import swaggerUI from "@fastify/swagger-ui"
+
 const logLevel = env.LOG_LEVEL;
 
 const app = fastify({
@@ -37,10 +39,18 @@ app.get("/hello", async (request, reply) => {
 	return { message: `Hola, ${result.data.name}!` };
 });
 
-routes.forEach( route => {
-	app.register(route);
+app.register(swagger, {
+		swagger: {
+			info: { title: "API", version: '1.0.0'}
+		}
+	}
+)
+app.register(swaggerUI, {
+	routePrefix: "/documentation",
+	uiConfig: { docExpansion: "full" }
 })
 
+app.register(allRoutes);
 app.setErrorHandler(handleError);
 
 const start = async () => {
