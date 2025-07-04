@@ -12,7 +12,7 @@
 	},
 	"license": "MIT",
 	"author": "Miguel Motta",
-	"type": "module",
+	"type": "commonjs",
 	"main": "server.js",
 	"scripts": {
 		"dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",

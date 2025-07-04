@@ -1,6 +1,8 @@
-import container from "./awilix";
-import env from "./dotenv";
 import prisma from "./prisma";
+import { handleError } from "./handlerError";
+import env from "./dotenv";
+import z from "./zod"
+import diContainer from "./diContainer";
 
 
-export { container, prisma, env };
+export { env, prisma, z, diContainer, handleError };

@@ -1,3 +1,2 @@
-import userRoutes from "./user"
-
-export { userRoutes }
+import userRoutes from "./guest";
+export const routes = [ userRoutes ];

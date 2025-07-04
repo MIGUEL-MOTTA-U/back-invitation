@@ -1,9 +1,8 @@
 import cors from "@fastify/cors";
 import fastify from "fastify";
-import { container, env } from "./plugins";
-import { z } from "./plugins/zod";
-import { userRoutes } from "./routes";
-const logLevel = env.LOG_LEVEL || "info";
+import { diContainer, env, handleError, z } from "./plugins";
+import { routes } from "./routes";
+const logLevel = env.LOG_LEVEL;
 
 const app = fastify({
 	logger: {
@@ -21,10 +20,10 @@ const app = fastify({
 });
 
 app.register(cors, {
-	origin: "*", // Cambia esto en producción
+	origin: env.CORS_ORIGIN,
 });
 
-app.decorate("container", container);
+app.decorate("container", diContainer);
 
 const HelloSchema = z.object({
 	name: z.string().min(1),
@@ -38,15 +37,18 @@ app.get("/hello", async (request, reply) => {
 	return { message: `Hola, ${result.data.name}!` };
 });
 
-app.register(userRoutes);
+routes.forEach( route => {
+	app.register(route);
+})
+
+app.setErrorHandler(handleError);
 
 const start = async () => {
 	try {
 		await app.listen({
 			port: Number(env.PORT) || 3000,
-			host: "0.0.0.0",
+			host: env.HOST,
 		});
-		console.log("Servidor escuchando en el puerto", env.PORT);
 	} catch (err) {
 		app.log.error(err);
 		process.exit(1);
