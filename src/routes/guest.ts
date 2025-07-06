@@ -15,6 +15,7 @@ const UserSchema = z.object({
 	name: z.string().min(1),
 	email: z.string().email(),
 	phone: z.string().min(10),
+	phoneCountryCode: z.string().min(1),
 	message: z.string().optional().nullable(),
 	confirmed: z.boolean().default(false)
 });
@@ -23,6 +24,7 @@ const GuestPartialSchema = z.object({
 	name: z.string().min(1).optional(),
 	email: z.string().email().optional(),
 	phone: z.string().min(10).optional(),
+	phoneCountryCode: z.string().min(1).optional(),
 	message: z.string().optional(),
 	confirmed: z.boolean().optional()
 });

@@ -29,6 +29,7 @@ All API endpoints are prefixed with `/api/v1`.
     "name": "string (required, min 1 character)",
     "email": "string (required, valid email)",
     "phone": "string (required, min 10 characters)",
+    "phoneCountryCode": "string (required, min 1 character)",
     "message": "string (optional)",
     "confirmed": "boolean (optional, default: false)"
   }
@@ -53,6 +54,7 @@ All API endpoints are prefixed with `/api/v1`.
     "name": "string (optional)",
     "email": "string (optional, valid email)",
     "phone": "string (optional, min 10 characters)",
+    "phoneCountryCode": "string (optional, min 1 character)",
     "message": "string (optional)",
     "confirmed": "boolean (optional)"
   }

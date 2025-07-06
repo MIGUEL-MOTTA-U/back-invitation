@@ -3,6 +3,7 @@ interface GuestDTO {
     name: string;
     email: string;
     phone: string;
+    phoneCountryCode: string;
     message?: string | null;
     confirmed: boolean;
 }

@@ -27,6 +27,7 @@ class GuestRepositoryPostgres implements GuestRepository {
             name: guest.name,
             email: guest.email,
             phone: guest.phone,
+            phoneCountryCode: guest.phoneCountryCode,
             message: guest.message,
             confirmed: guest.confirmed,
         };
@@ -56,6 +57,7 @@ class GuestRepositoryPostgres implements GuestRepository {
             name: guest.name,
             email: guest.email,
             phone: guest.phone,
+            phoneCountryCode: guest.phoneCountryCode,
             message: guest.message,
             confirmed: guest.confirmed,
         }));
