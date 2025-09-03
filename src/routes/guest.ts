@@ -25,7 +25,9 @@ const PreliminaryAssistant = z.object({
 	confirmed: z.boolean().default(false)
 })
 
-const Assistants = z.array(PreliminaryAssistant);
+const PreliminaryGuest = PreliminaryAssistant.extend({
+	companions: z.array(PreliminaryAssistant)
+});
 
 const GuestPartialSchema = z.object({
 	name: z.string().min(1).optional(),
@@ -37,8 +39,8 @@ const GuestPartialSchema = z.object({
 });
 
 export default async function userRoutes(app: FastifyInstance) {
-	app.post("/guests/assistants", async (request, reply) => {
-		const result = Assistants.safeParse(request.body);
+	app.post("/guests/bulk", async (request, reply) => {
+		const result = PreliminaryGuest.safeParse(request.body);
 		if (!result.success) {
 			return reply.status(400).send(result.error);
 		}

@@ -20,8 +20,21 @@ model Guest {
   confirmed Boolean @default(false)
 }
 
+model PreliminaryGuest {
+  id    String    @id @default(uuid())
+  name  String    @unique
+  confirmed Boolean @default(false)
+  companions PreliminaryAssistant[]
+  nCompanions Int @default(0)
+}
+
 model PreliminaryAssistant {
   id    String    @id @default(uuid())
   name  String
-  confirmed Boolean @default(false)
+  confirmed Boolean @default(true)
+  preliminaryGuestName String
+  preliminaryGuestId String
+  preliminaryGuest PreliminaryGuest @relation(fields: [preliminaryGuestId], references: [id], onDelete: Cascade)
+
 }
+

@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { ErrorRepository } from "../../errors";
 import { GuestRepository } from "../";
-import { GuestDTO, PreliminaryAssistant } from "../../types";
+import { GuestDTO, PreliminaryGuest } from "../../types";
 class GuestRepositoryPostgres implements GuestRepository {
     private readonly prisma: PrismaClient;
 
@@ -63,13 +63,32 @@ class GuestRepositoryPostgres implements GuestRepository {
         }));
     }
 
-    public async createPreliminaryGuests(guestPreliminaryDTO: PreliminaryAssistant[]): Promise<string> {
-        const result = await this.prisma.$transaction([
-            this.prisma.preliminaryAssistant.createMany({
-                data: guestPreliminaryDTO
-            })
-        ]);
-        return "OK";
+    public async createPreliminaryGuests(guestPreliminaryDTO: PreliminaryGuest): Promise<string> {
+        try {
+            // create preliminary guest and its companions in a transaction
+            const created = await this.prisma.$transaction([
+                this.prisma.preliminaryGuest.create({
+                    data: {
+                        name: guestPreliminaryDTO.name,
+                        confirmed: guestPreliminaryDTO.confirmed,
+                        nCompanions: guestPreliminaryDTO.companions.length,
+                        companions: {
+                            create: (guestPreliminaryDTO.companions || []).map(c => ({
+                                name: c.name,
+                                confirmed: c.confirmed,
+                                preliminaryGuestName: guestPreliminaryDTO.name
+                            }))
+                        }
+                    },
+                    include: { companions: true }
+                })
+            ]);
+
+            return created[0].id;
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
     }
 
     public async createGuest(guestDTO: GuestDTO): Promise<string> {
