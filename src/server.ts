@@ -3,6 +3,8 @@ import fastify from "fastify";
 import { diContainer, env, handleError, z, allRoutes } from "./plugins";
 import swagger from "@fastify/swagger"
 import swaggerUI from "@fastify/swagger-ui"
+import rateLimit from '@fastify/rate-limit'
+import type { FastifyRequest } from 'fastify'
 
 const logLevel = env.LOG_LEVEL;
 
@@ -45,6 +47,22 @@ app.register(swagger, {
 		}
 	}
 )
+// Rate limit: use env RATE_LIMIT_REQUESTS_PER_MINUTE to configure requests per minute
+const requestsPerMinute = Number(env.RATE_LIMIT_REQUESTS_PER_MINUTE) || 60;
+// @fastify/rate-limit expects points per window; window is 1 minute (60 seconds)
+app.register(rateLimit, {
+	max: requestsPerMinute,
+	timeWindow: '1 minute',
+	keyGenerator: (request: FastifyRequest) => request.ip || (request.headers['x-forwarded-for'] as string) || 'unknown',
+	errorResponseBuilder: function (req: FastifyRequest, context: any) {
+		return {
+			statusCode: 429,
+			error: 'Too Many Requests',
+			message: `You have exceeded the ${context.max} requests in ${context.after} seconds limit!`,
+		};
+	}
+});
+
 app.register(swaggerUI, {
 	routePrefix: "/documentation",
 	uiConfig: { docExpansion: "full" }
