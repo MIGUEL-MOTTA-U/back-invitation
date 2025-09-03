@@ -18,4 +18,10 @@ model Guest {
   phoneCountryCode String
   message String?
   confirmed Boolean @default(false)
-} 
+}
+
+model PreliminaryAssistant {
+  id    String    @id @default(uuid())
+  name  String
+  confirmed Boolean @default(false)
+}

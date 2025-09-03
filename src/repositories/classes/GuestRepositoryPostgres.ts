@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { ErrorRepository } from "../../errors";
 import { GuestRepository } from "../";
-import { GuestDTO } from "../../types";
+import { GuestDTO, PreliminaryAssistant } from "../../types";
 class GuestRepositoryPostgres implements GuestRepository {
     private readonly prisma: PrismaClient;
 
@@ -61,6 +61,15 @@ class GuestRepositoryPostgres implements GuestRepository {
             message: guest.message,
             confirmed: guest.confirmed,
         }));
+    }
+
+    public async createPreliminaryGuests(guestPreliminaryDTO: PreliminaryAssistant[]): Promise<string> {
+        const result = await this.prisma.$transaction([
+            this.prisma.preliminaryAssistant.createMany({
+                data: guestPreliminaryDTO
+            })
+        ]);
+        return "OK";
     }
 
     public async createGuest(guestDTO: GuestDTO): Promise<string> {

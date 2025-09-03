@@ -20,6 +20,13 @@ const UserSchema = z.object({
 	confirmed: z.boolean().default(false)
 });
 
+const PreliminaryAssistant = z.object({
+	name: z.string().min(1),
+	confirmed: z.boolean().default(false)
+})
+
+const Assistants = z.array(PreliminaryAssistant);
+
 const GuestPartialSchema = z.object({
 	name: z.string().min(1).optional(),
 	email: z.string().email().optional(),
@@ -30,6 +37,16 @@ const GuestPartialSchema = z.object({
 });
 
 export default async function userRoutes(app: FastifyInstance) {
+	app.post("/guests/assistants", async (request, reply) => {
+		const result = Assistants.safeParse(request.body);
+		if (!result.success) {
+			return reply.status(400).send(result.error);
+		}
+		const data = result.data;
+		const user = await guestRepository.createPreliminaryGuests(result.data);
+		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
+	});
+
 	app.post("/guests", async (request, reply) => {
 		const result = UserSchema.safeParse(request.body);
 		if (!result.success) {
