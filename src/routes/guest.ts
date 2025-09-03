@@ -49,6 +49,7 @@ export default async function userRoutes(app: FastifyInstance) {
 		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
 	});
 
+	/*
 	app.post("/guests", async (request, reply) => {
 		const result = UserSchema.safeParse(request.body);
 		if (!result.success) {
@@ -85,4 +86,5 @@ export default async function userRoutes(app: FastifyInstance) {
 		await guestRepository.deleteGuest(id);
 		return sendResponse({ message: `The user with Id ${id} was deleted.`, status: 200, type: typeApi}, res);
 	})
+	*/
 }
