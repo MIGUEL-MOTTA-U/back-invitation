@@ -1,8 +1,9 @@
-import { GuestDTO, PreliminaryGuest } from "../../types";
+import { GuestDTO, PreliminaryGuest, ConfirmedGuest } from "../../types";
 
 interface GuestRepository {
     getGuestById(guestId:string):Promise<GuestDTO | null>;
     getGuests(params: { page?: number, size?: number, name?: string, email?:string }): Promise<GuestDTO[]>;
+    getConfirmedGuestsWithCompanions(): Promise<ConfirmedGuest[]>;
     createGuest(guestDTO:GuestDTO):Promise<string>;
     createPreliminaryGuests(guestPreliminaryDTO: PreliminaryGuest):Promise<string>;
     deleteGuest(guestId:string):Promise<void>;

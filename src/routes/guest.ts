@@ -39,6 +39,35 @@ const GuestPartialSchema = z.object({
 });
 
 export default async function userRoutes(app: FastifyInstance) {
+	app.get("/guests/bulk", async (_request, reply) => {
+		try {
+			const allGuests = await guestRepository.getConfirmedGuestsWithCompanions();
+			const confirmedGuests = allGuests.filter(guest => guest.confirmed);
+			const unconfirmedGuests = allGuests.filter(guest => !guest.confirmed);
+			
+			return sendResponse({ 
+				message: "All guests retrieved successfully", 
+				status: 200, 
+				type: typeApi, 
+				payload: { 
+					allGuests,
+					confirmedGuests,
+					unconfirmedGuests,
+					statistics: {
+						totalGuests: allGuests.length,
+						totalConfirmedGuests: confirmedGuests.length,
+						totalUnconfirmedGuests: unconfirmedGuests.length,
+						totalCompanions: allGuests.reduce((total, guest) => total + guest.nCompanions, 0),
+						totalConfirmedCompanions: confirmedGuests.reduce((total, guest) => total + guest.nCompanions, 0),
+						totalUnconfirmedCompanions: unconfirmedGuests.reduce((total, guest) => total + guest.nCompanions, 0)
+					}
+				}
+			}, reply);
+		} catch (error) {
+			return reply.status(500).send({ message: "Internal server error", error: (error as Error).message });
+		}
+	});
+
 	app.post("/guests/bulk", async (request, reply) => {
 		const result = PreliminaryGuest.safeParse(request.body);
 		if (!result.success) {

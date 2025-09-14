@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { ErrorRepository } from "../../errors";
 import { GuestRepository } from "../";
-import { GuestDTO, PreliminaryGuest } from "../../types";
+import { GuestDTO, PreliminaryGuest, ConfirmedGuest } from "../../types";
 class GuestRepositoryPostgres implements GuestRepository {
     private readonly prisma: PrismaClient;
 
@@ -61,6 +61,33 @@ class GuestRepositoryPostgres implements GuestRepository {
             message: guest.message,
             confirmed: guest.confirmed,
         }));
+    }
+
+    public async getConfirmedGuestsWithCompanions(): Promise<ConfirmedGuest[]> {
+        try {
+            const allGuests = await this.prisma.$transaction([
+                this.prisma.preliminaryGuest.findMany({
+                    include: {
+                        companions: true
+                    }
+                })
+            ]);
+
+            return allGuests[0].map(guest => ({
+                id: guest.id,
+                name: guest.name,
+                confirmed: guest.confirmed,
+                nCompanions: guest.nCompanions,
+                companions: guest.companions.map(companion => ({
+                    id: companion.id,
+                    name: companion.name,
+                    confirmed: companion.confirmed
+                }))
+            }));
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
     }
 
     public async createPreliminaryGuests(guestPreliminaryDTO: PreliminaryGuest): Promise<string> {
