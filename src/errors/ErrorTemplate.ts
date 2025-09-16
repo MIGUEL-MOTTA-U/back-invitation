@@ -1,4 +1,4 @@
-import { ErrorType } from "../types"
+import { Error as ErrorType } from "../types"
 class ErrorTemplate extends Error{
     public readonly code:number;
     public readonly details: string;

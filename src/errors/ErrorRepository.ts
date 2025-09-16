@@ -1,4 +1,4 @@
-import { ErrorType } from "../types";
+import { Error as ErrorType } from "../types";
 import ErrorTemplate from "./ErrorTemplate";
 
 class ErrorRepository extends ErrorTemplate{

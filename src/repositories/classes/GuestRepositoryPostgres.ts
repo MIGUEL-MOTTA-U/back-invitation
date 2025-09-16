@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { ErrorRepository } from "../../errors";
 import { GuestRepository } from "../";
-import { GuestDTO, PreliminaryGuest, ConfirmedGuest } from "../../types";
+import { GuestDTO, PreliminaryGuest, ConfirmedGuest, PersonEntry } from "../../types";
 class GuestRepositoryPostgres implements GuestRepository {
     private readonly prisma: PrismaClient;
 
@@ -63,17 +63,23 @@ class GuestRepositoryPostgres implements GuestRepository {
         }));
     }
 
-    public async getConfirmedGuestsWithCompanions(): Promise<ConfirmedGuest[]> {
+    public async getConfirmedGuestsWithCompanions(params?: { page?: number, size?: number }): Promise<{ guests: ConfirmedGuest[], total: number }> {
         try {
-            const allGuests = await this.prisma.$transaction([
+            const { page = 1, size = 10 } = params || {};
+            const skip = (page - 1) * size;
+
+            const [allGuests, totalCount] = await this.prisma.$transaction([
                 this.prisma.preliminaryGuest.findMany({
                     include: {
                         companions: true
-                    }
-                })
+                    },
+                    skip,
+                    take: size
+                }),
+                this.prisma.preliminaryGuest.count()
             ]);
 
-            return allGuests[0].map(guest => ({
+            const guests = allGuests.map(guest => ({
                 id: guest.id,
                 name: guest.name,
                 confirmed: guest.confirmed,
@@ -84,6 +90,11 @@ class GuestRepositoryPostgres implements GuestRepository {
                     confirmed: companion.confirmed
                 }))
             }));
+
+            return {
+                guests,
+                total: totalCount
+            };
         } catch (error) {
             const message = (error as Error).message;
             throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
@@ -135,6 +146,73 @@ class GuestRepositoryPostgres implements GuestRepository {
                 where: { id: guestId }
             })
         ]);
+    }
+
+    public async getPaginatedPeople(params?: { page?: number, size?: number }): Promise<{ people: PersonEntry[], total: number, totalGuests: number, totalCompanions: number, totalConfirmedGuests: number, totalUnconfirmedGuests: number, totalConfirmedCompanions: number, totalUnconfirmedCompanions: number }> {
+        try {
+            const { page = 1, size = 10 } = params || {};
+            
+            // Get all guests and companions data without pagination first to calculate totals
+            const [allGuestsWithCompanions, totalGuestsCount, totalCompanionsCount, confirmedGuestsCount, confirmedCompanionsCount] = await this.prisma.$transaction([
+                this.prisma.preliminaryGuest.findMany({
+                    include: {
+                        companions: true
+                    }
+                }),
+                this.prisma.preliminaryGuest.count(),
+                this.prisma.preliminaryAssistant.count(),
+                this.prisma.preliminaryGuest.count({
+                    where: { confirmed: true }
+                }),
+                this.prisma.preliminaryAssistant.count({
+                    where: { confirmed: true }
+                })
+            ]);
+
+            // Flatten all people (guests + companions) into a single array
+            const allPeople: PersonEntry[] = [];
+            
+            allGuestsWithCompanions.forEach(guest => {
+                // Add the guest as a person
+                allPeople.push({
+                    id: guest.id,
+                    name: guest.name,
+                    confirmed: guest.confirmed,
+                    type: 'guest'
+                });
+                
+                // Add all companions as people
+                guest.companions.forEach(companion => {
+                    allPeople.push({
+                        id: companion.id,
+                        name: companion.name,
+                        confirmed: companion.confirmed,
+                        type: 'companion',
+                        guestId: guest.id,
+                        guestName: guest.name
+                    });
+                });
+            });
+
+            // Apply pagination to the flattened array
+            const totalPeople = allPeople.length;
+            const skip = (page - 1) * size;
+            const paginatedPeople = allPeople.slice(skip, skip + size);
+
+            return {
+                people: paginatedPeople,
+                total: totalPeople,
+                totalGuests: totalGuestsCount,
+                totalCompanions: totalCompanionsCount,
+                totalConfirmedGuests: confirmedGuestsCount,
+                totalUnconfirmedGuests: totalGuestsCount - confirmedGuestsCount,
+                totalConfirmedCompanions: confirmedCompanionsCount,
+                totalUnconfirmedCompanions: totalCompanionsCount - confirmedCompanionsCount
+            };
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
     }
 
     public async updateGuest(guestId: string, guestDTO: Partial<GuestDTO>): Promise<void> {

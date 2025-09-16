@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { diContainer } from "../plugins";
 import { GuestRepository } from "../repositories";
-import { OutputMessage } from "../types";
+import { OutputMessage, PersonEntry } from "../types";
 
 const guestRepository = diContainer.resolve<GuestRepository>('guestRepository');
 const typeApi = "api-guest"
@@ -38,28 +38,81 @@ const GuestPartialSchema = z.object({
 	confirmed: z.boolean().optional()
 });
 
+const PaginationSchema = z.object({
+	page: z.coerce.number().int().min(1).default(1),
+	size: z.coerce.number().int().min(1).max(300).default(10)
+});
+
 export default async function userRoutes(app: FastifyInstance) {
-	app.get("/guests/bulk", async (_request, reply) => {
+	app.get("/guests/bulk", async (request, reply) => {
 		try {
-			const allGuests = await guestRepository.getConfirmedGuestsWithCompanions();
-			const confirmedGuests = allGuests.filter(guest => guest.confirmed);
-			const unconfirmedGuests = allGuests.filter(guest => !guest.confirmed);
+			// Validate pagination parameters
+			const paginationResult = PaginationSchema.safeParse(request.query);
+			if (!paginationResult.success) {
+				return reply.status(400).send({ 
+					message: "Invalid pagination parameters", 
+					errors: paginationResult.error.errors 
+				});
+			}
+
+			const { page, size } = paginationResult.data;
+			const result = await guestRepository.getPaginatedPeople({ page, size });
+			const { people, total, totalGuests, totalCompanions, totalConfirmedGuests, totalUnconfirmedGuests, totalConfirmedCompanions, totalUnconfirmedCompanions } = result;
+			
+			// Separate people by type and confirmation status
+			const guests = people.filter(person => person.type === 'guest');
+			const companions = people.filter(person => person.type === 'companion');
+			const confirmedPeople = people.filter(person => person.confirmed);
+			const unconfirmedPeople = people.filter(person => !person.confirmed);
+			const confirmedGuests = guests.filter(guest => guest.confirmed);
+			const unconfirmedGuests = guests.filter(guest => !guest.confirmed);
+			const confirmedCompanions = companions.filter(companion => companion.confirmed);
+			const unconfirmedCompanions = companions.filter(companion => !companion.confirmed);
+			
+			// Calculate pagination metadata
+			const totalPages = Math.ceil(total / size);
+			const hasNextPage = page < totalPages;
+			const hasPreviousPage = page > 1;
 			
 			return sendResponse({ 
-				message: "All guests retrieved successfully", 
+				message: "All people retrieved successfully with pagination", 
 				status: 200, 
 				type: typeApi, 
 				payload: { 
-					allGuests,
-					confirmedGuests,
-					unconfirmedGuests,
+					people,
+					guests,
+					companions,
+					confirmedPeople,
+					unconfirmedPeople,
+					pagination: {
+						currentPage: page,
+						pageSize: size,
+						totalItems: total,
+						totalPages,
+						hasNextPage,
+						hasPreviousPage
+					},
 					statistics: {
-						totalGuests: allGuests.length,
-						totalConfirmedGuests: confirmedGuests.length,
-						totalUnconfirmedGuests: unconfirmedGuests.length,
-						totalCompanions: allGuests.reduce((total, guest) => total + guest.nCompanions, 0),
-						totalConfirmedCompanions: confirmedGuests.reduce((total, guest) => total + guest.nCompanions, 0),
-						totalUnconfirmedCompanions: unconfirmedGuests.reduce((total, guest) => total + guest.nCompanions, 0)
+						// Page-level statistics
+						pageGuests: guests.length,
+						pageCompanions: companions.length,
+						pageConfirmedGuests: confirmedGuests.length,
+						pageUnconfirmedGuests: unconfirmedGuests.length,
+						pageConfirmedCompanions: confirmedCompanions.length,
+						pageUnconfirmedCompanions: unconfirmedCompanions.length,
+						pageConfirmedPeople: confirmedPeople.length,
+						pageUnconfirmedPeople: unconfirmedPeople.length,
+						
+						// Global statistics
+						totalPeople: total,
+						totalGuests,
+						totalCompanions,
+						totalConfirmedGuests,
+						totalUnconfirmedGuests,
+						totalConfirmedCompanions,
+						totalUnconfirmedCompanions,
+						totalConfirmedPeople: totalConfirmedGuests + totalConfirmedCompanions,
+						totalUnconfirmedPeople: totalUnconfirmedGuests + totalUnconfirmedCompanions
 					}
 				}
 			}, reply);
