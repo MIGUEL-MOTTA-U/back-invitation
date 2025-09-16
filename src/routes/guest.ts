@@ -117,6 +117,7 @@ export default async function userRoutes(app: FastifyInstance) {
 				}
 			}, reply);
 		} catch (error) {
+			console.error("Error fetching paginated people:", error);
 			return reply.status(500).send({ message: "Internal server error", error: (error as Error).message });
 		}
 	});
