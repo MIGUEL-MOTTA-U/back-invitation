@@ -56,6 +56,81 @@ export default async function userRoutes(app: FastifyInstance) {
 			}
 
 			const { page, size } = paginationResult.data;
+			const result = await guestRepository.getPaginatedGuestGroups({ page, size });
+			const { people, total, totalGuests, totalCompanions, totalConfirmedGuests, totalUnconfirmedGuests, totalConfirmedCompanions, totalUnconfirmedCompanions, totalPages, hasNextPage, hasPreviousPage } = result;
+			
+			// Separate people by type and confirmation status
+			const guests = people.filter(person => person.type === 'guest');
+			const companions = people.filter(person => person.type === 'companion');
+			const confirmedPeople = people.filter(person => person.confirmed);
+			const unconfirmedPeople = people.filter(person => !person.confirmed);
+			const confirmedGuests = guests.filter(guest => guest.confirmed);
+			const unconfirmedGuests = guests.filter(guest => !guest.confirmed);
+			const confirmedCompanions = companions.filter(companion => companion.confirmed);
+			const unconfirmedCompanions = companions.filter(companion => !companion.confirmed);
+			
+			return sendResponse({ 
+				message: "Guest groups retrieved successfully with pagination (companions guaranteed to be with their guests)", 
+				status: 200, 
+				type: typeApi, 
+				payload: { 
+					people,
+					guests,
+					companions,
+					confirmedPeople,
+					unconfirmedPeople,
+					pagination: {
+						currentPage: page,
+						pageSize: size,
+						totalItems: total,
+						totalPages,
+						hasNextPage,
+						hasPreviousPage
+					},
+					statistics: {
+						// Page-level statistics
+						pageGuests: guests.length,
+						pageCompanions: companions.length,
+						pageConfirmedGuests: confirmedGuests.length,
+						pageUnconfirmedGuests: unconfirmedGuests.length,
+						pageConfirmedCompanions: confirmedCompanions.length,
+						pageUnconfirmedCompanions: unconfirmedCompanions.length,
+						pageConfirmedPeople: confirmedPeople.length,
+						pageUnconfirmedPeople: unconfirmedPeople.length,
+						
+						// Global statistics
+						totalPeople: total,
+						totalGuests,
+						totalCompanions,
+						totalConfirmedGuests,
+						totalUnconfirmedGuests,
+						totalConfirmedCompanions,
+						totalUnconfirmedCompanions,
+						totalConfirmedPeople: totalConfirmedGuests + totalConfirmedCompanions,
+						totalUnconfirmedPeople: totalUnconfirmedGuests + totalUnconfirmedCompanions
+					}
+				}
+			}, reply);
+		} catch (error) {
+			console.error("Error fetching paginated guest groups:", error);
+			return reply.status(500).send({ message: "Internal server error", error: (error as Error).message });
+		}
+	});
+
+	/*
+	// Legacy endpoint for comparison - paginates individual people (can truncate companions)
+	app.get("/guests/bulk/legacy", async (request, reply) => {
+		try {
+			// Validate pagination parameters
+			const paginationResult = PaginationSchema.safeParse(request.query);
+			if (!paginationResult.success) {
+				return reply.status(400).send({ 
+					message: "Invalid pagination parameters", 
+					errors: paginationResult.error.errors 
+				});
+			}
+
+			const { page, size } = paginationResult.data;
 			const result = await guestRepository.getPaginatedPeople({ page, size });
 			const { people, total, totalGuests, totalCompanions, totalConfirmedGuests, totalUnconfirmedGuests, totalConfirmedCompanions, totalUnconfirmedCompanions } = result;
 			
@@ -75,7 +150,7 @@ export default async function userRoutes(app: FastifyInstance) {
 			const hasPreviousPage = page > 1;
 			
 			return sendResponse({ 
-				message: "All people retrieved successfully with pagination", 
+				message: "All people retrieved successfully with pagination (LEGACY - may truncate companions)", 
 				status: 200, 
 				type: typeApi, 
 				payload: { 
@@ -121,6 +196,7 @@ export default async function userRoutes(app: FastifyInstance) {
 			return reply.status(500).send({ message: "Internal server error", error: (error as Error).message });
 		}
 	});
+	*/
 
 	app.post("/guests/bulk", async (request, reply) => {
 		const result = PreliminaryGuest.safeParse(request.body);

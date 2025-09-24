@@ -215,6 +215,87 @@ class GuestRepositoryPostgres implements GuestRepository {
         }
     }
 
+    public async getPaginatedGuestGroups(params?: { page?: number, size?: number }): Promise<{ people: PersonEntry[], total: number, totalGuests: number, totalCompanions: number, totalConfirmedGuests: number, totalUnconfirmedGuests: number, totalConfirmedCompanions: number, totalUnconfirmedCompanions: number, totalPages: number, hasNextPage: boolean, hasPreviousPage: boolean }> {
+        try {
+            const { page = 1, size = 10 } = params || {};
+            
+            // First, get total counts for statistics
+            const [totalGuestsCount, totalCompanionsCount, confirmedGuestsCount, confirmedCompanionsCount] = await this.prisma.$transaction([
+                this.prisma.preliminaryGuest.count(),
+                this.prisma.preliminaryAssistant.count(),
+                this.prisma.preliminaryGuest.count({
+                    where: { confirmed: true }
+                }),
+                this.prisma.preliminaryAssistant.count({
+                    where: { confirmed: true }
+                })
+            ]);
+
+            // Calculate pagination for guests (not individual people)
+            const skip = (page - 1) * size;
+            
+            // Get paginated guests with their companions
+            const paginatedGuests = await this.prisma.preliminaryGuest.findMany({
+                include: {
+                    companions: true
+                },
+                skip,
+                take: size,
+                orderBy: {
+                    name: 'asc'
+                }
+            });
+
+            // Build the people array ensuring all companions of each guest are included
+            const people: PersonEntry[] = [];
+            
+            paginatedGuests.forEach(guest => {
+                // Add the guest as a person
+                people.push({
+                    id: guest.id,
+                    name: guest.name,
+                    confirmed: guest.confirmed,
+                    type: 'guest'
+                });
+                
+                // Add all companions of this guest
+                guest.companions.forEach(companion => {
+                    people.push({
+                        id: companion.id,
+                        name: companion.name,
+                        confirmed: companion.confirmed,
+                        type: 'companion',
+                        guestId: guest.id,
+                        guestName: guest.name
+                    });
+                });
+            });
+
+            // Calculate total people based on all guests and companions
+            const totalPeople = totalGuestsCount + totalCompanionsCount;
+            const totalPages = Math.ceil(totalGuestsCount / size);
+            const hasNextPage = page < totalPages;
+            const hasPreviousPage = page > 1;
+
+            return {
+                people,
+                total: totalPeople,
+                totalGuests: totalGuestsCount,
+                totalCompanions: totalCompanionsCount,
+                totalConfirmedGuests: confirmedGuestsCount,
+                totalUnconfirmedGuests: totalGuestsCount - confirmedGuestsCount,
+                totalConfirmedCompanions: confirmedCompanionsCount,
+                totalUnconfirmedCompanions: totalCompanionsCount - confirmedCompanionsCount,
+                totalPages,
+                hasNextPage,
+                hasPreviousPage
+            };
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
+    }
+
     public async updateGuest(guestId: string, guestDTO: Partial<GuestDTO>): Promise<void> {
         const guest = await this.guestExists(guestId);
         if (!guest) throw new ErrorRepository(ErrorRepository.NOT_FOUND, "Tried to update a guest but it didn't exist");
