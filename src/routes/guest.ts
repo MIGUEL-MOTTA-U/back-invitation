@@ -205,19 +205,22 @@ export default async function userRoutes(app: FastifyInstance) {
 		}
 		const data = result.data;
 		const user = await guestRepository.createPreliminaryGuests(result.data);
+		console.log("Created preliminary guest group:", data);
 		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
 	});
 
-	/*
+	
 	app.post("/guests", async (request, reply) => {
+
 		const result = UserSchema.safeParse(request.body);
+
 		if (!result.success) {
 			return reply.status(400).send(result.error);
 		}
 		const user = await guestRepository.createGuest(result.data);
 		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
 	});
-
+/*
 	app.get("/guests", async (req, res) => {
 		const { page, size, name, email } = req.query as { page?: number, size?: number, name?: string, email?:string };
 		const result = await guestRepository.getGuests({ page: (page && Number(page) > 0) ? Number(page) : 1, size: size ? Number(size) : 10, name, email });
