@@ -13,9 +13,9 @@ datasource db {
 model Guest {
   id    String    @id @default(uuid())
   name  String
-  email String @unique
-  phone String
-  phoneCountryCode String
+  email String? @unique
+  phone String?
+  phoneCountryCode String?
   message String?
   confirmed Boolean @default(false)
 }

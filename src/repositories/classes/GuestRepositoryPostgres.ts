@@ -130,10 +130,20 @@ class GuestRepositoryPostgres implements GuestRepository {
     }
 
     public async createGuest(guestDTO: GuestDTO): Promise<string> {
-        const guestExists = await this.guestExistsByEmail(guestDTO.email);
-        if (guestExists) throw new ErrorRepository(ErrorRepository.CONFLICT_REPEATED_DATA, "Tried to create a guest but it already exists.");
+        // Only check for existing email if email is provided
+        if (guestDTO.email) {
+            const guestExists = await this.guestExistsByEmail(guestDTO.email);
+            if (guestExists) throw new ErrorRepository(ErrorRepository.CONFLICT_REPEATED_DATA, "Tried to create a guest but it already exists.");
+        }
         const guestCreated = await this.prisma.guest.create({
-            data: guestDTO
+            data: {
+                name: guestDTO.name,
+                email: guestDTO.email,
+                phone: guestDTO.phone,
+                phoneCountryCode: guestDTO.phoneCountryCode,
+                message: guestDTO.message,
+                confirmed: guestDTO.confirmed
+            }
         });
         return guestCreated.id;
     }
