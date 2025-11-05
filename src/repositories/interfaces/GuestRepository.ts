@@ -14,7 +14,7 @@ interface GuestWithCompanionsResponse {
         confirmed: boolean;
     }[];
 }
-
+// fix?
 interface GuestRepository {
     getGuestById(guestId:string):Promise<GuestDTO | null>;
     getGuests(params: { page?: number, size?: number, name?: string, email?:string }): Promise<GuestDTO[]>;
