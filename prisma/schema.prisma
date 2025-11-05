@@ -18,6 +18,10 @@ model Guest {
   phoneCountryCode String?
   message String?
   confirmed Boolean @default(false)
+  isCompanion Boolean @default(false)
+  guestId String?
+  guest Guest? @relation("GuestCompanions", fields: [guestId], references: [id], onDelete: Cascade)
+  companions Guest[] @relation("GuestCompanions")
 }
 
 model PreliminaryGuest {

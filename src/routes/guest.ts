@@ -20,6 +20,21 @@ const UserSchema = z.object({
 	confirmed: z.boolean().default(false)
 });
 
+const CompanionSchema = z.object({
+	name: z.string().min(1),
+	confirmed: z.boolean().default(false)
+});
+
+const UserWithCompanionsSchema = z.object({
+	name: z.string().min(1),
+	email: z.string().email().optional(),
+	phone: z.string().min(10).optional(),
+	phoneCountryCode: z.string().min(1).optional(),
+	message: z.string().optional().nullable(),
+	confirmed: z.boolean().default(false),
+	companions: z.array(CompanionSchema).optional()
+});
+
 const PreliminaryAssistant = z.object({
 	name: z.string().min(1),
 	confirmed: z.boolean().default(false)
@@ -209,16 +224,78 @@ export default async function userRoutes(app: FastifyInstance) {
 		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
 	});
 
+	app.get("/guests", async (request, reply) => {
+		try {
+			const guests = await guestRepository.getAllGuestsWithCompanions();
+			
+			// Calculate statistics
+			const totalGuests = guests.length;
+			const totalCompanions = guests.reduce((sum, guest) => sum + guest.companions.length, 0);
+			const confirmedGuests = guests.filter(g => g.confirmed).length;
+			const unconfirmedGuests = totalGuests - confirmedGuests;
+			const confirmedCompanions = guests.reduce((sum, guest) => 
+				sum + guest.companions.filter((c: any) => c.confirmed).length, 0
+			);
+			const unconfirmedCompanions = totalCompanions - confirmedCompanions;
+			
+			return sendResponse({
+				message: "All guests with companions retrieved successfully",
+				status: 200,
+				type: typeApi,
+				payload: {
+					guests,
+					statistics: {
+						totalGuests,
+						totalCompanions,
+						totalPeople: totalGuests + totalCompanions,
+						confirmedGuests,
+						unconfirmedGuests,
+						confirmedCompanions,
+						unconfirmedCompanions,
+						confirmedPeople: confirmedGuests + confirmedCompanions,
+						unconfirmedPeople: unconfirmedGuests + unconfirmedCompanions
+					}
+				}
+			}, reply);
+		} catch (error) {
+			console.error("Error fetching guests with companions:", error);
+			return reply.status(500).send({ 
+				message: "Internal server error", 
+				error: (error as Error).message 
+			});
+		}
+	});
+
 	
 	app.post("/guests", async (request, reply) => {
+		// Try to parse with companions first
+		const resultWithCompanions = UserWithCompanionsSchema.safeParse(request.body);
 
-		const result = UserSchema.safeParse(request.body);
-
-		if (!result.success) {
-			return reply.status(400).send(result.error);
+		if (!resultWithCompanions.success) {
+			return reply.status(400).send(resultWithCompanions.error);
 		}
-		const user = await guestRepository.createGuest(result.data);
-		return sendResponse({ message: `The user was succesfuly created with id ${user}`, status: 201, type: typeApi, payload: { userId: user}}, reply);
+
+		const data = resultWithCompanions.data;
+
+		// If companions array is provided and not empty, use the new method
+		if (data.companions && data.companions.length > 0) {
+			const userId = await guestRepository.createGuestWithCompanions(data);
+			return sendResponse({ 
+				message: `The guest was successfully created with ${data.companions.length} companion(s)`, 
+				status: 201, 
+				type: typeApi, 
+				payload: { userId }
+			}, reply);
+		} else {
+			// Otherwise, create a simple guest without companions
+			const userId = await guestRepository.createGuest(data);
+			return sendResponse({ 
+				message: `The guest was successfully created with id ${userId}`, 
+				status: 201, 
+				type: typeApi, 
+				payload: { userId }
+			}, reply);
+		}
 	});
 /*
 	app.get("/guests", async (req, res) => {

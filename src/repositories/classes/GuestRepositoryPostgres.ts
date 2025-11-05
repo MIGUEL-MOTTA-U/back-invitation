@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { ErrorRepository } from "../../errors";
 import { GuestRepository } from "../";
-import { GuestDTO, PreliminaryGuest, ConfirmedGuest, PersonEntry } from "../../types";
+import { GuestDTO, GuestWithCompanionsDTO, PreliminaryGuest, ConfirmedGuest, PersonEntry } from "../../types";
 class GuestRepositoryPostgres implements GuestRepository {
     private readonly prisma: PrismaClient;
 
@@ -12,7 +12,8 @@ class GuestRepositoryPostgres implements GuestRepository {
     public async getGuestById(guestId: string): Promise<GuestDTO | null> {
         const result = await this.prisma.$transaction([
             this.prisma.guest.findFirst({
-                where: { id: guestId }
+                where: { id: guestId },
+                include: { companions: true }
             })
         ])
         const guest = result[0]
@@ -30,6 +31,8 @@ class GuestRepositoryPostgres implements GuestRepository {
             phoneCountryCode: guest.phoneCountryCode,
             message: guest.message,
             confirmed: guest.confirmed,
+            isCompanion: guest.isCompanion,
+            guestId: guest.guestId
         };
         
         return guestDTO;
@@ -49,7 +52,8 @@ class GuestRepositoryPostgres implements GuestRepository {
             this.prisma.guest.findMany({
                 where,
                 skip,
-                take: size
+                take: size,
+                include: { companions: true }
             })
         ]);
         return guests[0].map(guest => ({
@@ -60,6 +64,8 @@ class GuestRepositoryPostgres implements GuestRepository {
             phoneCountryCode: guest.phoneCountryCode,
             message: guest.message,
             confirmed: guest.confirmed,
+            isCompanion: guest.isCompanion,
+            guestId: guest.guestId
         }));
     }
 
@@ -142,10 +148,80 @@ class GuestRepositoryPostgres implements GuestRepository {
                 phone: guestDTO.phone,
                 phoneCountryCode: guestDTO.phoneCountryCode,
                 message: guestDTO.message,
-                confirmed: guestDTO.confirmed
+                confirmed: guestDTO.confirmed,
+                isCompanion: guestDTO.isCompanion || false,
+                guestId: guestDTO.guestId
             }
         });
         return guestCreated.id;
+    }
+
+    public async createGuestWithCompanions(guestDTO: GuestWithCompanionsDTO): Promise<string> {
+        try {
+            // Only check for existing email if email is provided
+            if (guestDTO.email) {
+                const guestExists = await this.guestExistsByEmail(guestDTO.email);
+                if (guestExists) throw new ErrorRepository(ErrorRepository.CONFLICT_REPEATED_DATA, "Tried to create a guest but it already exists.");
+            }
+
+            // Create the main guest with companions in a transaction
+            const guestCreated = await this.prisma.guest.create({
+                data: {
+                    name: guestDTO.name,
+                    email: guestDTO.email,
+                    phone: guestDTO.phone,
+                    phoneCountryCode: guestDTO.phoneCountryCode,
+                    message: guestDTO.message,
+                    confirmed: guestDTO.confirmed,
+                    isCompanion: false,
+                    companions: {
+                        create: (guestDTO.companions || []).map(companion => ({
+                            name: companion.name,
+                            confirmed: companion.confirmed,
+                            isCompanion: true
+                        }))
+                    }
+                },
+                include: { companions: true }
+            });
+
+            return guestCreated.id;
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
+    }
+
+    public async getAllGuestsWithCompanions(): Promise<any[]> {
+        try {
+            const guests = await this.prisma.guest.findMany({
+                where: { isCompanion: false },
+                include: {
+                    companions: {
+                        select: {
+                            id: true,
+                            name: true,
+                            confirmed: true
+                        }
+                    }
+                },
+                orderBy: { name: 'asc' }
+            });
+
+            return guests.map(guest => ({
+                id: guest.id,
+                name: guest.name,
+                email: guest.email,
+                phone: guest.phone,
+                phoneCountryCode: guest.phoneCountryCode,
+                message: guest.message,
+                confirmed: guest.confirmed,
+                companions: guest.companions
+            }));
+        } catch (error) {
+            const message = (error as Error).message;
+            throw new ErrorRepository(ErrorRepository.SERVER_ERROR, message);
+        }
     }
 
     public async deleteGuest(guestId: string): Promise<void> {
